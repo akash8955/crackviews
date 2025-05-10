@@ -9,12 +9,10 @@ const Page = async () => {
       <h3>Interview generation</h3>
 
       <Agent
-        userName={user?.name || ''}
+        userName={user?.name!}
         userId={user?.id}
-        // profileImage={user?.profileURL}
-        interviewId={id}
-        type="interview"
-        question={interview.questions}
+        profileImage={user?.profileURL}
+        type="generate"
       />
     </>
   );
