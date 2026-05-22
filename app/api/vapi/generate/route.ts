@@ -5,7 +5,21 @@ import { db } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
 
 export async function POST(request: Request) {
-  const { type, role, level, techstack, amount, userid } = await request.json();
+  const body = await request.json();
+  let args = body;
+  let toolCallId = null;
+
+  if (body.message?.toolWithToolCallList && body.message.toolWithToolCallList.length > 0) {
+    const toolCall = body.message.toolWithToolCallList[0].toolCall;
+    args = toolCall.function.arguments;
+    toolCallId = toolCall.id;
+  } else if (body.message?.toolCalls && body.message.toolCalls.length > 0) {
+    const toolCall = body.message.toolCalls[0];
+    args = toolCall.function.arguments;
+    toolCallId = toolCall.id;
+  }
+
+  const { type, role, level, techstack, amount, userid } = args;
 
   try {
     const { text: questions } = await generateText({
@@ -29,15 +43,28 @@ export async function POST(request: Request) {
       role: role,
       type: type,
       level: level,
-      techstack: techstack.split(","),
+      techstack: techstack ? techstack.split(",") : [],
       questions: JSON.parse(questions),
-      userId: userid,
+      userId: userid || "anonymous",
       finalized: true,
       coverImage: getRandomInterviewCover(),
       createdAt: new Date().toISOString(),
     };
 
     await db.collection("interviews").add(interview);
+    if (toolCallId) {
+      return Response.json(
+        {
+          results: [
+            {
+              toolCallId: toolCallId,
+              result: "Interview generated successfully!",
+            },
+          ],
+        },
+        { status: 200 }
+      );
+    }
 
     return Response.json({ success: true }, { status: 200 });
   } catch (error) {
